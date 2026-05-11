@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "convex-quickstart": {
+      "source": "get-convex/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/convex-quickstart/SKILL.md",
+      "computedHash": "8735052585ff81bb6ad4b362a7bb599413288e55d071c8ddf4f798b6d989ebac"
+    },
     "incremental-implementation": {
       "source": "addyosmani/agent-skills",
       "sourceType": "github",
