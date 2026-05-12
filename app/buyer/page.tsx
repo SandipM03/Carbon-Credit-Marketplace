@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { getSessionFromDocumentCookie } from "../lib/session";
@@ -10,7 +10,27 @@ import type { Id } from "../../convex/_generated/dataModel";
 
 export default function BuyerDashboard() {
   const listings = useQuery(api.listings.listActive);
-  const session = getSessionFromDocumentCookie();
+  const [session, setSession] = useState<{ userId: string; role: "farmer" | "buyer" | "admin" } | null>(null);
+  const [guardMessage, setGuardMessage] = useState<string | null>(null);
+
+  // Initialize session only on client after hydration
+  useEffect(() => {
+    const currentSession = getSessionFromDocumentCookie();
+    setSession(currentSession);
+
+    if (!currentSession) {
+      setGuardMessage("No active session. Please login to access buyer actions.");
+      return;
+    }
+
+    if (currentSession.role !== "buyer") {
+      setGuardMessage("This dashboard is for buyer accounts only.");
+      return;
+    }
+
+    setGuardMessage(null);
+  }, []);
+
   const buyerId = session?.role === "buyer" ? (session.userId as Id<"users">) : null;
   const savedListings = useQuery(
     api.savedListings.listByBuyer,
@@ -21,18 +41,6 @@ export default function BuyerDashboard() {
     buyerId ? { buyerId } : "skip",
   );
   const toggleSave = useMutation(api.savedListings.toggle);
-  const [guardMessage] = useState<string | null>(() => {
-    const session = getSessionFromDocumentCookie();
-    if (!session) {
-      return "No active session. Please login to access buyer actions.";
-    }
-
-    if (session.role !== "buyer") {
-      return "This dashboard is for buyer accounts only.";
-    }
-
-    return null;
-  });
   const [search, setSearch] = useState("");
   const [landType, setLandType] = useState("all");
   const [maxPrice, setMaxPrice] = useState("");

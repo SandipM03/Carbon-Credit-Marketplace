@@ -317,7 +317,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="flex flex-col gap-4 rounded-[36px] border border-black/10 bg-white/80 p-8 text-center">
+        {/* <section className="flex flex-col gap-4 rounded-[36px] border border-black/10 bg-white/80 p-8 text-center">
           <h2 className="text-3xl font-semibold text-[color:var(--forest)]">
             Ready to validate your first carbon projects?
           </h2>
@@ -333,7 +333,7 @@ export default function Home() {
               Download product brief
             </button>
           </div>
-        </section>
+        </section> */}
       </main>
 
       <footer className="mx-auto w-full max-w-6xl px-6 pb-10 text-sm text-black/60">

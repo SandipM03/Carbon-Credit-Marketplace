@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { getSessionFromDocumentCookie } from "../lib/session";
@@ -85,7 +85,12 @@ export default function FarmerDashboard() {
   const createLand = useMutation(api.lands.create);
   const generateUploadUrl = useMutation(api.lands.generateUploadUrl);
   const generateRecommendation = useAction(api.lands.generateRecommendation);
-  const session = getSessionFromDocumentCookie();
+  const [session, setSession] = useState<{ userId: string; role: "farmer" | "buyer" | "admin" } | null>(null);
+
+  useEffect(() => {
+    setSession(getSessionFromDocumentCookie());
+  }, []);
+
   const farmerId = session?.role === "farmer" ? (session.userId as Id<"users">) : null;
   const lands = useQuery(
     api.lands.listByFarmer,

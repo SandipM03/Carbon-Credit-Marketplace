@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { getSessionFromDocumentCookie } from "../lib/session";
+import { LandDetailPanel } from "./LandDetailPanel";
 import type { Id } from "../../convex/_generated/dataModel";
 
 type ListingRecord = {
@@ -18,7 +19,12 @@ type ListingRecord = {
 };
 
 export default function AdminDashboard() {
-  const session = getSessionFromDocumentCookie();
+  const [session, setSession] = useState<{ userId: string; role: "farmer" | "buyer" | "admin" } | null>(null);
+
+  useEffect(() => {
+    setSession(getSessionFromDocumentCookie());
+  }, []);
+
   const adminId = session?.role === "admin" ? (session.userId as Id<"users">) : null;
   const lands = useQuery(api.lands.listRecent);
   const listings = useQuery(api.listings.listAll, adminId ? { adminId } : "skip");
@@ -33,6 +39,7 @@ export default function AdminDashboard() {
   const setListingActive = useMutation(api.listings.setActive);
   const generateRecommendation = useAction(api.lands.generateRecommendation);
   const setRecommendationOverride = useMutation(api.lands.setRecommendationOverride);
+  const [expandedLandId, setExpandedLandId] = useState<string | null>(null);
   const [draftNotes, setDraftNotes] = useState<Record<string, string>>({});
   const [draftCarbonFactor, setDraftCarbonFactor] = useState<Record<string, string>>({});
   const [draftTimeYears, setDraftTimeYears] = useState<Record<string, string>>({});
@@ -326,26 +333,23 @@ export default function AdminDashboard() {
                 <th className="px-4 py-3">Land</th>
                 <th className="px-4 py-3">Farmer</th>
                 <th className="px-4 py-3">Area</th>
-                <th className="px-4 py-3">Goal</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Admin notes</th>
-                <th className="px-4 py-3">Carbon &amp; pricing</th>
-                <th className="px-4 py-3">Recommendations</th>
+                <th className="px-4 py-3">Est. Credits</th>
                 <th className="px-4 py-3">Listing</th>
-                <th className="px-4 py-3">Actions</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-black/10">
               {!lands && (
                 <tr>
-                  <td className="px-4 py-4 text-black/60" colSpan={10}>
+                  <td className="px-4 py-4 text-black/60" colSpan={7}>
                     Loading submissions...
                   </td>
                 </tr>
               )}
               {lands?.length === 0 && (
                 <tr>
-                  <td className="px-4 py-4 text-black/60" colSpan={10}>
+                  <td className="px-4 py-4 text-black/60" colSpan={7}>
                     No pending submissions yet.
                   </td>
                 </tr>
@@ -353,458 +357,107 @@ export default function AdminDashboard() {
               {lands?.map((land) => {
                 const carbonEstimate = land.carbonEstimate;
                 const existingListing = listingByLandId.get(land._id);
-                const carbonFactorValue = Number.parseFloat(
-                  getDraftCarbonFactor(land._id, carbonEstimate?.carbonFactor),
-                );
-                const timeYearsValue = Number.parseFloat(
-                  getDraftTimeYears(land._id, carbonEstimate?.timeYears),
-                );
-                const computedScore =
-                  Number.isFinite(carbonFactorValue) &&
-                  Number.isFinite(timeYearsValue)
-                    ? land.totalArea * carbonFactorValue * timeYearsValue
-                    : null;
+                const isExpanded = expandedLandId === land._id;
 
                 return (
-                  <tr key={land._id} className="bg-white/60">
-                  <td className="px-4 py-4 font-semibold text-[color:var(--forest)]">
-                    {land.landName}
-                  </td>
-                  <td className="px-4 py-4 text-black/70">
-                    <div className="font-semibold">{land.farmerName}</div>
-                    <div className="text-xs text-black/50">{land.farmerPhone}</div>
-                  </td>
-                  <td className="px-4 py-4 text-black/70">
-                    {land.totalArea} {land.areaUnit}
-                  </td>
-                  <td className="px-4 py-4 text-black/70">
-                    {land.plantationGoal}
-                  </td>
-                  <td className="px-4 py-4 text-black/70">
-                    {formatStatus(land.status)}
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex flex-col gap-2">
-                      <textarea
-                        className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                        rows={3}
-                        value={getDraftNote(land._id, land.adminNotes)}
-                        onChange={(event) =>
-                          setDraftNotes((prev) => ({
-                            ...prev,
-                            [land._id]: event.target.value,
-                          }))
-                        }
-                        placeholder="Add notes for the farmer..."
-                      />
+                  <>
+                    <tr key={land._id} className="bg-white/60 hover:bg-white/80 transition">
+                      <td className="px-4 py-4 font-semibold text-[color:var(--forest)]">
+                        {land.landName}
+                      </td>
+                      <td className="px-4 py-4 text-black/70">
+                        <div className="font-semibold text-sm">{land.farmerName}</div>
+                        <div className="text-xs text-black/50">{land.farmerPhone}</div>
+                      </td>
+                      <td className="px-4 py-4 text-black/70">
+                        {land.totalArea} {land.areaUnit}
+                      </td>
+                      <td className="px-4 py-4 text-black/70 text-sm">
+                        <span className="inline-block rounded-full bg-black/5 px-2 py-1">
+                          {formatStatus(land.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-black/70 text-sm">
+                        {carbonEstimate
+                          ? `${carbonEstimate.estimatedCredits} cr.`
+                          : "Not set"}
+                      </td>
+                      <td className="px-4 py-4 text-black/70 text-sm">
+                        {existingListing
+                          ? `${existingListing.creditsAvailable} cr. @ $${existingListing.price}`
+                          : "Not published"}
+                      </td>
+                      <td className="px-4 py-4">
                         <button
-                          className="self-start rounded-full border border-black/10 px-3 py-1 text-xs text-black/70"
+                          className="rounded-full border border-black/10 px-3 py-1 text-xs text-black/70 hover:bg-black/5"
                           type="button"
-                          onClick={() => {
-                            if (!adminId) {
-                              setActionMessage("Admin session missing. Please login again.");
-                              return;
-                            }
-                            void setAdminNotes({
-                              adminId,
-                              id: land._id,
-                              adminNotes: getDraftNote(
-                                land._id,
-                                land.adminNotes,
-                              ).trim() || undefined,
-                            });
-                          }}
+                          onClick={() =>
+                            setExpandedLandId(isExpanded ? null : land._id)
+                          }
                         >
-                          Save notes
+                          {isExpanded ? "Close" : "Expand"}
                         </button>
-                    </div>
-                  </td>
-                    <td className="px-4 py-4">
-                      <div className="space-y-3 text-xs text-black/70">
-                        <div>
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">
-                            Current
-                          </div>
-                          {carbonEstimate ? (
-                            <div className="mt-2 space-y-1">
-                              <p>
-                                Factor: {carbonEstimate.carbonFactor} | Time: {" "}
-                                {carbonEstimate.timeYears}y
-                              </p>
-                              <p>Score: {carbonEstimate.estimatedScore}</p>
-                              <p>Credits: {carbonEstimate.estimatedCredits}</p>
-                              <p>Price: {carbonEstimate.listingPrice}</p>
-                              {carbonEstimate.recommendedActions.length > 0 && (
-                                <p>
-                                  Actions: {" "}
-                                  {carbonEstimate.recommendedActions.join(", ")}
-                                </p>
-                              )}
-                            </div>
-                          ) : (
-                            <p className="mt-2 text-xs text-black/60">
-                              Not set yet.
-                            </p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">
-                            Estimate
-                          </div>
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            <input
-                              className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                              type="number"
-                              min="0"
-                              step="0.1"
-                              value={getDraftCarbonFactor(
-                                land._id,
-                                carbonEstimate?.carbonFactor,
-                              )}
-                              onChange={(event) =>
-                                setDraftCarbonFactor((prev) => ({
-                                  ...prev,
-                                  [land._id]: event.target.value,
-                                }))
-                              }
-                              placeholder="Carbon factor"
-                            />
-                            <input
-                              className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={getDraftTimeYears(land._id, carbonEstimate?.timeYears)}
-                              onChange={(event) =>
-                                setDraftTimeYears((prev) => ({
-                                  ...prev,
-                                  [land._id]: event.target.value,
-                                }))
-                              }
-                              placeholder="Time (years)"
-                            />
-                          </div>
-                          <p className="text-[10px] text-black/50">
-                            Score: {computedScore !== null ? computedScore.toFixed(2) : "--"}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          <input
-                            className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={getDraftEstimatedCredits(
-                              land._id,
-                              carbonEstimate?.estimatedCredits,
-                            )}
-                            onChange={(event) =>
-                              setDraftEstimatedCredits((prev) => ({
-                                ...prev,
-                                [land._id]: event.target.value,
-                              }))
-                            }
-                            placeholder="Estimated credits"
+                      </td>
+                    </tr>
+                    {isExpanded && (
+                      <tr className="bg-white/40">
+                        <td colSpan={7} className="px-6 py-6">
+                          <LandDetailPanel
+                            land={land}
+                            carbonEstimate={carbonEstimate}
+                            existingListing={existingListing}
+                            adminId={adminId}
+                            actionMessage={actionMessage}
+                            recommendationLoadingId={recommendationLoadingId}
+                            draftNotes={draftNotes}
+                            setDraftNotes={setDraftNotes}
+                            draftCarbonFactor={draftCarbonFactor}
+                            setDraftCarbonFactor={setDraftCarbonFactor}
+                            draftTimeYears={draftTimeYears}
+                            setDraftTimeYears={setDraftTimeYears}
+                            draftEstimatedCredits={draftEstimatedCredits}
+                            setDraftEstimatedCredits={setDraftEstimatedCredits}
+                            draftListingPrice={draftListingPrice}
+                            setDraftListingPrice={setDraftListingPrice}
+                            draftRecommendedActions={draftRecommendedActions}
+                            setDraftRecommendedActions={setDraftRecommendedActions}
+                            draftListingCredits={draftListingCredits}
+                            setDraftListingCredits={setDraftListingCredits}
+                            draftListingDuration={draftListingDuration}
+                            setDraftListingDuration={setDraftListingDuration}
+                            overrideTrees={overrideTrees}
+                            setOverrideTrees={setOverrideTrees}
+                            overrideNotes={overrideNotes}
+                            setOverrideNotes={setOverrideNotes}
+                            setActionMessage={setActionMessage}
+                            setRecommendationLoadingId={setRecommendationLoadingId}
+                            getDraftNote={getDraftNote}
+                            getDraftCarbonFactor={getDraftCarbonFactor}
+                            getDraftTimeYears={getDraftTimeYears}
+                            getDraftEstimatedCredits={getDraftEstimatedCredits}
+                            getDraftListingPrice={getDraftListingPrice}
+                            getDraftListingCredits={getDraftListingCredits}
+                            getDraftListingDuration={getDraftListingDuration}
+                            getDraftRecommendedActions={getDraftRecommendedActions}
+                            getOverrideTrees={getOverrideTrees}
+                            getOverrideNote={getOverrideNote}
+                            parseNumber={parseNumber}
+                            parseActions={parseActions}
+                            handleGenerateRecommendation={handleGenerateRecommendation}
+                            handleOverrideRecommendation={handleOverrideRecommendation}
+                            handleSaveCarbonEstimate={handleSaveCarbonEstimate}
+                            handlePublishListing={handlePublishListing}
+                            approve={approve}
+                            reject={reject}
+                            requestInfo={requestInfo}
+                            setStatus={setStatus}
+                            setAdminNotes={setAdminNotes}
+                            setListingActive={setListingActive}
                           />
-                          <input
-                            className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={getDraftListingPrice(
-                              land._id,
-                              carbonEstimate?.listingPrice,
-                            )}
-                            onChange={(event) =>
-                              setDraftListingPrice((prev) => ({
-                                ...prev,
-                                [land._id]: event.target.value,
-                              }))
-                            }
-                            placeholder="Listing price"
-                          />
-                          <textarea
-                            className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                            rows={2}
-                            value={getDraftRecommendedActions(
-                              land._id,
-                              carbonEstimate?.recommendedActions?.join("\n"),
-                            )}
-                            onChange={(event) =>
-                              setDraftRecommendedActions((prev) => ({
-                                ...prev,
-                                [land._id]: event.target.value,
-                              }))
-                            }
-                            placeholder="Recommended actions (one per line)"
-                          />
-                          <button
-                            className="rounded-full border border-black/10 px-3 py-1 text-xs text-black/70"
-                            type="button"
-                            onClick={() => handleSaveCarbonEstimate(land._id)}
-                          >
-                            Save estimate
-                          </button>
-                        </div>
-                      </div>
-                    </td>
-                  <td className="px-4 py-4 text-xs text-black/70">
-                    <div className="space-y-3">
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">
-                          Current
-                        </div>
-                        {land.recommendation ? (
-                          <div className="mt-2">
-                            <p className="text-xs font-semibold text-black/80">
-                              {land.recommendation.trees.map((tree) => tree.name).join(", ")}
-                            </p>
-                            <p className="mt-1 text-xs text-black/60">
-                              Benefits: {land.recommendation.summaryBenefits.join(", ")}
-                            </p>
-                            <p className="text-xs text-black/60">
-                              Maintenance: {land.recommendation.summaryMaintenance}
-                            </p>
-                            <p className="text-xs text-black/60">
-                              Carbon potential: {land.recommendation.summaryCarbonPotential}
-                            </p>
-                            <p className="mt-1 text-[10px] uppercase tracking-[0.2em] text-black/50">
-                              {land.recommendation.source}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="mt-2 text-xs text-black/60">Not generated yet.</p>
-                        )}
-                        <button
-                          className="mt-2 rounded-full border border-black/10 px-3 py-1 text-xs text-black/70"
-                          type="button"
-                          onClick={() => handleGenerateRecommendation(land._id)}
-                          disabled={recommendationLoadingId === land._id}
-                        >
-                          {recommendationLoadingId === land._id
-                            ? "Generating..."
-                            : "Generate"}
-                        </button>
-                      </div>
-                      <div>
-                        <div className="text-[10px] uppercase tracking-[0.2em] text-black/50">
-                          Override
-                        </div>
-                        <input
-                          className="mt-2 w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                          value={getOverrideTrees(land._id)}
-                          onChange={(event) =>
-                            setOverrideTrees((prev) => ({
-                              ...prev,
-                              [land._id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Neem, Mango"
-                        />
-                        <textarea
-                          className="mt-2 w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                          rows={2}
-                          value={getOverrideNote(land._id)}
-                          onChange={(event) =>
-                            setOverrideNotes((prev) => ({
-                              ...prev,
-                              [land._id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Optional admin note"
-                        />
-                        <button
-                          className="mt-2 rounded-full border border-black/10 px-3 py-1 text-xs text-black/70"
-                          type="button"
-                          onClick={() => handleOverrideRecommendation(land._id)}
-                        >
-                          Save override
-                        </button>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-xs text-black/70">
-                    {existingListing ? (
-                      <div className="space-y-2">
-                        <p>
-                          Credits: {existingListing.creditsAvailable} | Price: {existingListing.price}
-                        </p>
-                        <p>Duration: {existingListing.duration} years</p>
-                        <p className="text-[10px] uppercase tracking-[0.2em] text-black/50">
-                          {existingListing.active ? "Active" : "Inactive"}
-                        </p>
-                        <button
-                          className="rounded-full border border-black/10 px-3 py-1 text-xs text-black/70"
-                          type="button"
-                          onClick={() => {
-                            if (!adminId) {
-                              setActionMessage(
-                                "Admin session missing. Please login again.",
-                              );
-                              return;
-                            }
-                            void setListingActive({
-                              adminId,
-                              listingId: existingListing._id,
-                              active: !existingListing.active,
-                            });
-                          }}
-                        >
-                          {existingListing.active ? "Deactivate" : "Activate"}
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <input
-                          className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={getDraftListingCredits(
-                            land._id,
-                            carbonEstimate?.estimatedCredits,
-                          )}
-                          onChange={(event) =>
-                            setDraftListingCredits((prev) => ({
-                              ...prev,
-                              [land._id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Credits available"
-                        />
-                        <input
-                          className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={getDraftListingPrice(
-                            land._id,
-                            carbonEstimate?.listingPrice,
-                          )}
-                          onChange={(event) =>
-                            setDraftListingPrice((prev) => ({
-                              ...prev,
-                              [land._id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Listing price"
-                        />
-                        <input
-                          className="w-full rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={getDraftListingDuration(
-                            land._id,
-                            carbonEstimate?.timeYears,
-                          )}
-                          onChange={(event) =>
-                            setDraftListingDuration((prev) => ({
-                              ...prev,
-                              [land._id]: event.target.value,
-                            }))
-                          }
-                          placeholder="Duration (years)"
-                        />
-                        <button
-                          className="rounded-full bg-[color:var(--forest)] px-3 py-1 text-xs text-white"
-                          type="button"
-                          onClick={() => handlePublishListing(land._id)}
-                        >
-                          Publish listing
-                        </button>
-                      </div>
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                  <td className="px-4 py-4">
-                    <div className="flex flex-wrap gap-2 text-xs">
-                      {land.status === "pending" && (
-                        <button
-                          className="rounded-full border border-black/10 px-3 py-1 text-black/70"
-                          type="button"
-                          onClick={() => {
-                            if (!adminId) {
-                              setActionMessage("Admin session missing. Please login again.");
-                              return;
-                            }
-                            void setStatus({
-                              adminId,
-                              id: land._id,
-                              status: "under_review",
-                            });
-                          }}
-                        >
-                          Under review
-                        </button>
-                      )}
-                      {(land.status === "pending" ||
-                        land.status === "under_review") && (
-                        <button
-                          className="rounded-full border border-black/10 px-3 py-1 text-black/70"
-                          type="button"
-                          onClick={() => {
-                            if (!adminId) {
-                              setActionMessage("Admin session missing. Please login again.");
-                              return;
-                            }
-                            void requestInfo({ adminId, id: land._id });
-                          }}
-                        >
-                          Request info
-                        </button>
-                      )}
-                      {(land.status === "pending" ||
-                        land.status === "under_review" ||
-                        land.status === "request_info") && (
-                        <button
-                          className="rounded-full bg-[color:var(--forest)] px-3 py-1 text-white"
-                          type="button"
-                          onClick={() => {
-                            if (!adminId) {
-                              setActionMessage("Admin session missing. Please login again.");
-                              return;
-                            }
-                            void approve({ adminId, id: land._id });
-                          }}
-                        >
-                          Approve
-                        </button>
-                      )}
-                      {(land.status === "pending" ||
-                        land.status === "under_review" ||
-                        land.status === "request_info") && (
-                        <button
-                          className="rounded-full border border-black/10 px-3 py-1 text-black/70"
-                          type="button"
-                          onClick={() => {
-                            if (!adminId) {
-                              setActionMessage("Admin session missing. Please login again.");
-                              return;
-                            }
-                            void reject({ adminId, id: land._id });
-                          }}
-                        >
-                          Reject
-                        </button>
-                      )}
-                      {land.status === "approved" && (
-                        <button
-                          className="rounded-full border border-black/10 px-3 py-1 text-black/70"
-                          type="button"
-                          onClick={() => {
-                            if (!adminId) {
-                              setActionMessage("Admin session missing. Please login again.");
-                              return;
-                            }
-                            void setStatus({ adminId, id: land._id, status: "listed" });
-                          }}
-                        >
-                          Mark listed
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                  </>
                 );
               })}
             </tbody>

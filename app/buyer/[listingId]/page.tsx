@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -13,7 +13,12 @@ export default function ListingDetailsPage() {
   const params = useParams();
   const rawListingId = params?.listingId;
   const listingId = Array.isArray(rawListingId) ? rawListingId[0] : rawListingId;
-  const session = getSessionFromDocumentCookie();
+  const [session, setSession] = useState<{ userId: string; role: "farmer" | "buyer" | "admin" } | null>(null);
+
+  useEffect(() => {
+    setSession(getSessionFromDocumentCookie());
+  }, []);
+
   const buyerId = session?.role === "buyer" ? (session.userId as Id<"users">) : null;
 
   const listing = useQuery(

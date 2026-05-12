@@ -159,25 +159,7 @@ export default function RegisterPage() {
           <p className="mt-3 text-sm text-black/60">{status ?? "Password is required."}</p>
         </form>
 
-        <aside className="rounded-3xl border border-black/10 bg-white/80 p-6">
-          <h2 className="text-lg font-semibold text-[color:var(--forest)]">
-            Recent registrations
-          </h2>
-          <p className="mt-2 text-sm text-black/60">
-            Showing the latest 20 users from Convex.
-          </p>
-          <div className="mt-4 space-y-3 text-sm text-black/70">
-            {!users && <p>Loading users...</p>}
-            {users?.length === 0 && <p>No users yet.</p>}
-            {users?.map((user) => (
-              <div key={user._id} className="rounded-2xl bg-[color:var(--mist)] px-4 py-3">
-                <p className="font-semibold text-[color:var(--forest)]">{user.name}</p>
-                <p className="text-xs uppercase tracking-[0.3em] text-black/50">{user.role}</p>
-                <p className="text-xs text-black/60">{user.phone}</p>
-              </div>
-            ))}
-          </div>
-        </aside>
+        
       </div>
     </div>
   );

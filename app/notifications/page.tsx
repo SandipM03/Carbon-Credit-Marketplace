@@ -1,13 +1,18 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { getSessionFromDocumentCookie } from "../lib/session";
 import type { Id } from "../../convex/_generated/dataModel";
 
 export default function NotificationsPage() {
-  const session = getSessionFromDocumentCookie();
+  const [session, setSession] = useState<{ userId: string; role: "farmer" | "buyer" | "admin" } | null>(null);
+
+  useEffect(() => {
+    setSession(getSessionFromDocumentCookie());
+  }, []);
+
   const userId = session?.userId as Id<"users"> | null;
   const notifications = useQuery(
     api.notifications.listByUser,

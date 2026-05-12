@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import {
   clearSessionCookies,
   getSessionFromDocumentCookie,
@@ -14,8 +15,14 @@ const ROLE_LABELS: Record<Role, string> = {
 };
 
 export function RoleNavigation() {
-  const session = getSessionFromDocumentCookie();
-  const role = session?.role ?? null;
+  const [role, setRole] = useState<Role | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const session = getSessionFromDocumentCookie();
+    setRole(session?.role ?? null);
+    setIsLoaded(true);
+  }, []);
 
   const handleLogout = () => {
     clearSessionCookies();
