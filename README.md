@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Carbon Credit Marketplace (GreenCredits)
 
-## Getting Started
+GreenCredits is a role-based marketplace for carbon projects. Farmers register land, admins review and estimate credits, and buyers discover and request listed projects.
 
-First, run the development server:
+## Tech stack
+
+- Next.js 16 (App Router) + React 19 + TypeScript
+- Convex (database, queries, mutations, actions, file storage)
+- Tailwind CSS 4
+- Leaflet + react-leaflet + react-leaflet-draw (map-based land input)
+
+## Roles and routes
+
+- `/register`, `/login` - account onboarding and sign-in
+- `/farmer` - land submissions and recommendation view
+- `/admin` - land review, status updates, recommendations, and listing controls
+- `/buyer` and `/buyer/[listingId]` - active listing feed and listing details
+- `/notifications`, `/contact` - shared user support flows
+
+## Environment variables
+
+Create a `.env.local` file in the project root:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+NEXT_PUBLIC_CONVEX_URL=your_convex_deployment_url
+GEMINI_API_KEY=optional_for_ai_tree_explanations
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`GEMINI_API_KEY` is optional. Without it, the app still generates rule-based tree recommendations.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Local development
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Run Convex in one terminal:
+   ```bash
+   npx convex dev
+   ```
+3. Run Next.js in another terminal:
+   ```bash
+   npm run dev
+   ```
+4. Open `http://localhost:3000`.
 
-## Learn More
+## Available scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run dev` - start Next.js dev server
+- `npm run build` - production build
+- `npm run start` - run production server
+- `npm run lint` - run ESLint
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Data model summary (Convex)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Key tables are defined in `convex/schema.ts`:
 
-## Deploy on Vercel
+- `users` - farmer, buyer, admin accounts
+- `lands` - farmer-submitted land data, status, estimates, recommendations
+- `trees` - seed tree dataset used for recommendation scoring
+- `listings` - approved land converted into buyer-facing listings
+- `purchaseRequests`, `savedListings`, `notifications`, `inquiries`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Session state is stored in browser cookies (`gc_user`, `gc_role`) for role-based navigation.
+- Uploaded land images are stored in Convex storage and resolved to signed URLs in queries.
