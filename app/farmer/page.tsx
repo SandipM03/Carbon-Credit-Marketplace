@@ -547,7 +547,7 @@ export default function FarmerDashboard() {
               </span>
             </label>
             <label className="text-sm font-medium text-black/70 sm:col-span-2">
-              Land images (optional, up to 5)
+              Add Supporting documents(up to 5)
               <input
                 className="mt-2 w-full rounded-2xl border border-black/10 bg-white px-4 py-3 text-sm"
                 type="file"
