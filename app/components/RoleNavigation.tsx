@@ -47,6 +47,12 @@ export function RoleNavigation() {
               <Link className="hover:text-black" href={`/${role}`}>
                 {ROLE_LABELS[role]}
               </Link>
+              <Link className="hover:text-black" href="/notifications">
+                Notifications
+              </Link>
+              <Link className="hover:text-black" href="/contact">
+                Contact
+              </Link>
               <Link className="hover:text-black" href="/register">
                 Add account
               </Link>

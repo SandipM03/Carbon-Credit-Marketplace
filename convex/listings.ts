@@ -17,7 +17,7 @@ async function attachLandDetails(
     db: { get: (id: Id<"lands">) => Promise<Doc<"lands"> | null> };
     storage: { getUrl: (id: Id<"_storage">) => Promise<string | null> };
   },
-  listings: Array<{ landId: Id<"lands"> }>,
+  listings: Array<Doc<"listings">>,
 ) {
   return await Promise.all(
     listings.map(async (listing) => {

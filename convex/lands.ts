@@ -2,6 +2,7 @@ import { action, mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { createNotification } from "./notifications";
 
 const LAND_STATUS = v.union(
   v.literal("pending"),
@@ -46,6 +47,30 @@ type TreeRecommendation = {
   note?: string;
   generatedAt: number;
 };
+
+async function notifyLandStatus(
+  ctx: { db: { get: (id: Id<"lands">) => Promise<{ farmerId: Id<"users">; landName: string } | null> } },
+  landId: Id<"lands">,
+  status: LandStatus,
+) {
+  if (status !== "approved" && status !== "rejected") {
+    return;
+  }
+
+  const land = await ctx.db.get(landId);
+  if (!land) {
+    return;
+  }
+
+  const statusLabel = status === "approved" ? "approved" : "rejected";
+  await createNotification(ctx, {
+    userId: land.farmerId,
+    title: `Land ${statusLabel}`,
+    message: `${land.landName} was ${statusLabel} by the admin team.`,
+    category: "status",
+    link: "/farmer",
+  });
+}
 
 const VALID_STATUS_TRANSITIONS: Record<LandStatus, readonly LandStatus[]> = {
   pending: ["under_review", "request_info", "approved", "rejected"],
@@ -429,6 +454,16 @@ export const setRecommendation = mutation({
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.id, { recommendation: args.recommendation });
+    const land = await ctx.db.get(args.id);
+    if (land) {
+      await createNotification(ctx, {
+        userId: land.farmerId,
+        title: "Recommendation updated",
+        message: `New tree recommendations are ready for ${land.landName}.`,
+        category: "recommendation",
+        link: "/farmer",
+      });
+    }
   },
 });
 
@@ -482,6 +517,13 @@ export const setRecommendationOverride = mutation({
     });
 
     await ctx.db.patch(args.id, { recommendation });
+    await createNotification(ctx, {
+      userId: land.farmerId,
+      title: "Recommendation updated",
+      message: `Admin updated recommendations for ${land.landName}.`,
+      category: "recommendation",
+      link: "/farmer",
+    });
   },
 });
 
@@ -501,6 +543,7 @@ export const setStatus = mutation({
 
     assertValidStatusTransition(land.status, args.status);
     await ctx.db.patch(args.id, { status: args.status });
+    await notifyLandStatus(ctx, args.id, args.status);
   },
 });
 
@@ -516,6 +559,7 @@ export const approve = mutation({
 
     assertValidStatusTransition(land.status, "approved");
     await ctx.db.patch(args.id, { status: "approved" });
+    await notifyLandStatus(ctx, args.id, "approved");
   },
 });
 
@@ -531,6 +575,7 @@ export const reject = mutation({
 
     assertValidStatusTransition(land.status, "rejected");
     await ctx.db.patch(args.id, { status: "rejected" });
+    await notifyLandStatus(ctx, args.id, "rejected");
   },
 });
 

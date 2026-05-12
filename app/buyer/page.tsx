@@ -332,7 +332,7 @@ export default function BuyerDashboard() {
                   </td>
                 </tr>
               )}
-              {purchaseRequests?.map((request) => (
+              {purchaseRequests?.map((request: any) => (
                 <tr key={request._id} className="bg-white/60">
                   <td className="px-4 py-4">
                     <Link

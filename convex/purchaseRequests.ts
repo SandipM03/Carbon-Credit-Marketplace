@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { createNotification, notifyAdmins } from "./notifications";
 
 async function ensureRole(
   ctx: { db: { get: (id: Id<"users">) => Promise<{ role: string } | null> } },
@@ -23,16 +24,16 @@ async function attachRequestDetails(
     };
     storage: { getUrl: (id: Id<"_storage">) => Promise<string | null> };
   },
-  requests: Array<{ listingId: Id<"listings"> }>,
+  requests: Array<Doc<"purchaseRequests">>,
 ) {
   return await Promise.all(
     requests.map(async (request) => {
-      const listing = await ctx.db.get(request.listingId);
+      const listing = (await ctx.db.get(request.listingId)) as Doc<"listings"> | null;
       if (!listing) {
         return null;
       }
 
-      const land = await ctx.db.get(listing.landId);
+      const land = (await ctx.db.get(listing.landId)) as Doc<"lands"> | null;
       if (!land) {
         return null;
       }
@@ -97,13 +98,37 @@ export const create = mutation({
       throw new Error("A purchase request already exists for this listing.");
     }
 
-    return await ctx.db.insert("purchaseRequests", {
+    const requestId = await ctx.db.insert("purchaseRequests", {
       buyerId: args.buyerId,
       listingId: args.listingId,
       status: "submitted",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    const buyer = await ctx.db.get(args.buyerId);
+    const land = await ctx.db.get(listing.landId);
+    const landName = land?.landName ?? "a listing";
+    const buyerName = buyer?.name ?? "A buyer";
+
+    if (land) {
+      await createNotification(ctx, {
+        userId: land.farmerId,
+        title: "Buyer interest",
+        message: `${buyerName} requested ${landName}.`,
+        category: "purchase",
+        link: "/farmer",
+      });
+    }
+
+    await notifyAdmins(ctx, {
+      title: "Buyer interest",
+      message: `${buyerName} requested ${landName}.`,
+      category: "purchase",
+      link: "/admin",
+    });
+
+    return requestId;
   },
 });
 
@@ -152,6 +177,19 @@ export const setStatus = mutation({
     await ctx.db.patch(args.requestId, {
       status: args.status,
       updatedAt: Date.now(),
+    });
+
+    const listing = await ctx.db.get(request.listingId);
+    const land = listing ? await ctx.db.get(listing.landId) : null;
+    const landName = land?.landName ?? "the listing";
+    const statusLabel = args.status === "approved" ? "approved" : "rejected";
+
+    await createNotification(ctx, {
+      userId: request.buyerId,
+      title: `Purchase request ${statusLabel}`,
+      message: `Your request for ${landName} was ${statusLabel}.`,
+      category: "status",
+      link: listing ? `/buyer/${listing._id}` : "/buyer",
     });
   },
 });

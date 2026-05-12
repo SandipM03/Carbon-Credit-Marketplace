@@ -1,11 +1,14 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useMemo, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { getSessionFromDocumentCookie } from "../lib/session";
 import type { Id } from "../../convex/_generated/dataModel";
+
+const LandMap = dynamic(() => import("../components/LandMap"), { ssr: false });
 
 const LAND_TYPES = ["Agricultural", "Barren", "Dry Land", "Wet Land", "Mixed"];
 const SOIL_TYPES = ["Sandy", "Clay", "Loamy", "Black Soil", "Red Soil"];
@@ -27,6 +30,7 @@ const STATUS_FLOW = [
 ] as const;
 
 type PolygonPoint = [number, number];
+const COORDINATE_PRECISION = 6;
 
 function parsePolygonInput(rawPolygon: string) {
   const lines = rawPolygon
@@ -64,6 +68,17 @@ function parsePolygonInput(rawPolygon: string) {
   }
 
   return { points };
+}
+
+function formatPolygonPoints(points: PolygonPoint[]) {
+  return points
+    .map(
+      ([latitudeValue, longitudeValue]) =>
+        `${latitudeValue.toFixed(COORDINATE_PRECISION)},${longitudeValue.toFixed(
+          COORDINATE_PRECISION,
+        )}`,
+    )
+    .join("\n");
 }
 
 export default function FarmerDashboard() {
@@ -144,12 +159,36 @@ export default function FarmerDashboard() {
     );
   }, [latitude, longitude]);
 
-  const mapEmbedUrl = useMemo(() => {
+  const mapLocation = useMemo(() => {
     if (!locationIsValid) {
       return null;
     }
-    return `https://maps.google.com/maps?q=${encodeURIComponent(`${latitude},${longitude}`)}&z=14&output=embed`;
+    return {
+      lat: Number(latitude),
+      lng: Number(longitude),
+    };
   }, [latitude, longitude, locationIsValid]);
+
+  const polygonPreview = useMemo(() => {
+    const parsed = parsePolygonInput(polygonRaw);
+    if ("error" in parsed) {
+      return undefined;
+    }
+    return parsed.points;
+  }, [polygonRaw]);
+
+  const handleLocationChange = (nextLatitude: number, nextLongitude: number) => {
+    setLatitude(nextLatitude.toFixed(COORDINATE_PRECISION));
+    setLongitude(nextLongitude.toFixed(COORDINATE_PRECISION));
+  };
+
+  const handlePolygonChange = (points: PolygonPoint[] | null) => {
+    if (!points || points.length === 0) {
+      setPolygonRaw("");
+      return;
+    }
+    setPolygonRaw(formatPolygonPoints(points));
+  };
 
   const fillCurrentLocation = () => {
     if (!navigator.geolocation) {
@@ -263,7 +302,7 @@ export default function FarmerDashboard() {
 
     const polygonResult = parsePolygonInput(polygonRaw);
     if ("error" in polygonResult) {
-      setStatus(polygonResult.error);
+      setStatus((polygonResult as { error: string }).error || "Invalid polygon");
       return;
     }
 
@@ -536,16 +575,18 @@ export default function FarmerDashboard() {
             </label>
           </div>
 
-          {mapEmbedUrl && (
-            <div className="mt-5 overflow-hidden rounded-2xl border border-black/10">
-              <iframe
-                title="Land location preview"
-                src={mapEmbedUrl}
-                className="h-56 w-full border-0"
-                loading="lazy"
-              />
+          <div className="mt-5 space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-black/60">
+              <span>Click to set GPS, drag marker to adjust, draw a polygon for boundaries.</span>
+              <span>Use the layer switcher for satellite imagery.</span>
             </div>
-          )}
+            <LandMap
+              location={mapLocation}
+              polygonPoints={polygonPreview}
+              onLocationChange={handleLocationChange}
+              onPolygonChange={handlePolygonChange}
+            />
+          </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <button

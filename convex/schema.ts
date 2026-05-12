@@ -11,7 +11,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_phone", ["phone"])
-    .index("by_email", ["email"]),
+    .index("by_email", ["email"])
+    .index("by_role", ["role"]),
   lands: defineTable({
     farmerId: v.id("users"),
     farmerName: v.string(),
@@ -116,4 +117,30 @@ export default defineSchema({
     .index("by_buyerId", ["buyerId"])
     .index("by_listingId", ["listingId"])
     .index("by_buyer_listing", ["buyerId", "listingId"]),
+  notifications: defineTable({
+    userId: v.id("users"),
+    title: v.string(),
+    message: v.string(),
+    category: v.union(
+      v.literal("status"),
+      v.literal("purchase"),
+      v.literal("recommendation"),
+      v.literal("inquiry"),
+    ),
+    link: v.optional(v.string()),
+    createdAt: v.number(),
+    readAt: v.optional(v.number()),
+  }).index("by_userId", ["userId"]),
+  inquiries: defineTable({
+    userId: v.id("users"),
+    role: v.union(v.literal("farmer"), v.literal("buyer")),
+    subject: v.string(),
+    message: v.string(),
+    listingId: v.optional(v.id("listings")),
+    landId: v.optional(v.id("lands")),
+    status: v.union(v.literal("open"), v.literal("resolved")),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_status", ["status"]),
 });

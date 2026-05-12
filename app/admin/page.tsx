@@ -22,6 +22,7 @@ export default function AdminDashboard() {
   const adminId = session?.role === "admin" ? (session.userId as Id<"users">) : null;
   const lands = useQuery(api.lands.listRecent);
   const listings = useQuery(api.listings.listAll, adminId ? { adminId } : "skip");
+  const inquiries = useQuery(api.inquiries.listForAdmin, adminId ? { adminId } : "skip");
   const approve = useMutation(api.lands.approve);
   const reject = useMutation(api.lands.reject);
   const requestInfo = useMutation(api.lands.requestInfo);
@@ -808,6 +809,63 @@ export default function AdminDashboard() {
               })}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-black/10 bg-white/80 p-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[color:var(--forest)]">
+              Inquiries
+            </h2>
+            <p className="text-sm text-black/60">
+              User questions and support requests.
+            </p>
+          </div>
+          <span className="rounded-full bg-[color:var(--mist)] px-4 py-2 text-xs uppercase tracking-[0.3em] text-black/60">
+            {inquiries?.length ?? 0} messages
+          </span>
+        </div>
+
+        <div className="mt-6 space-y-3">
+          {!inquiries && (
+            <div className="rounded-2xl border border-black/10 bg-white px-6 py-6 text-sm text-black/60">
+              Loading inquiries...
+            </div>
+          )}
+          {inquiries?.length === 0 && (
+            <div className="rounded-2xl border border-black/10 bg-white px-6 py-6 text-sm text-black/60">
+              No inquiries yet.
+            </div>
+          )}
+          {inquiries?.map((inquiry) => (
+            <div key={inquiry._id} className="rounded-2xl border border-black/10 bg-white p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex-1">
+                  <p className="font-semibold text-[color:var(--forest)]">
+                    {inquiry.user.name} ({inquiry.role})
+                  </p>
+                  <p className="text-sm font-semibold text-black/80 mt-1">
+                    {inquiry.subject}
+                  </p>
+                  <p className="text-sm text-black/60 mt-1">{inquiry.message}</p>
+                  <p className="text-xs text-black/40 mt-2">
+                    {new Date(inquiry.createdAt).toLocaleDateString()} -{" "}
+                    {inquiry.user.phone}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] whitespace-nowrap ${
+                    inquiry.status === "open"
+                      ? "bg-amber-100 text-amber-800"
+                      : "bg-emerald-100 text-emerald-800"
+                  }`}
+                >
+                  {inquiry.status}
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>

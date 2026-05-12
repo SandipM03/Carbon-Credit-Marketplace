@@ -54,7 +54,8 @@ export default function ListingDetailsPage() {
     if (!purchaseRequests || !listingId) {
       return null;
     }
-    return purchaseRequests.find((request) => request.listingId === listingId) ?? null;
+    const found = purchaseRequests.find((request) => request.listingId === listingId);
+    return found ? (found as any) : null;
   }, [purchaseRequests, listingId]);
 
   return (
@@ -65,11 +66,16 @@ export default function ListingDetailsPage() {
             <p className="text-sm font-semibold uppercase tracking-[0.4em] text-[color:var(--clay)]">
               Buyer
             </p>
-            <h1 className="mt-2 text-3xl font-semibold text-[color:var(--forest)]">
-              Project details
-            </h1>
-              <p className="mt-2 text-sm text-black/60">
-                {listing.land.landType} - {listing.land.totalArea} {listing.land.areaUnit}
+            {listing ? (
+              <p>
+                {listing.land.landName} - Maintenance: {listing.land.recommendation?.summaryMaintenance ?? "N/A"} - Carbon: {listing.land.recommendation?.summaryCarbonPotential ?? "N/A"}
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-black/60">Loading listing summary...</p>
+            )}
+          </div>
+          <Link
+            href="/buyer"
             className="rounded-full border border-black/15 px-5 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-black/70"
           >
             Back to listings
@@ -125,11 +131,13 @@ export default function ListingDetailsPage() {
                 {listing.land.landName}
               </h2>
               <p className="mt-2 text-sm text-black/60">
-                {listing.land.landType}  {listing.land.totalArea} {listing.land.areaUnit}
-                  <p>
-                    Maintenance: {listing.land.recommendation.summaryMaintenance} -
-                    Carbon: {listing.land.recommendation.summaryCarbonPotential}
-                  </p>
+                {listing.land.landType} - {listing.land.totalArea} {listing.land.areaUnit}
+              </p>
+              {listing.land.recommendation && (
+                <p className="mt-2 text-sm text-black/60">
+                  Maintenance: {listing.land.recommendation.summaryMaintenance} - Carbon: {listing.land.recommendation.summaryCarbonPotential}
+                </p>
+              )}
             </div>
 
             <div className="mt-6 grid grid-cols-2 gap-4 text-sm text-black/70">
@@ -204,7 +212,7 @@ export default function ListingDetailsPage() {
                 >
                   {isSaved ? "Saved" : "Save listing"}
                 </button>
-                {currentRequest?.status === "submitted" && (
+                {currentRequest && currentRequest.status === "submitted" && (
                   <button
                     type="button"
                     className="rounded-full border border-black/15 px-4 py-2 text-sm text-black/70"
@@ -294,8 +302,7 @@ export default function ListingDetailsPage() {
                   </p>
                   <p>Benefits: {listing.land.recommendation.summaryBenefits.join(", ")}</p>
                   <p>
-                    Maintenance: {listing.land.recommendation.summaryMaintenance} 
-                    Carbon: {listing.land.recommendation.summaryCarbonPotential}
+                    Maintenance: {listing.land.recommendation.summaryMaintenance} - Carbon: {listing.land.recommendation.summaryCarbonPotential}
                   </p>
                   <p className="text-black/60">
                     {listing.land.recommendation.explanation}
@@ -311,3 +318,4 @@ export default function ListingDetailsPage() {
     </div>
   );
 }
+

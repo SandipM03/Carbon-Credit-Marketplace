@@ -9,8 +9,10 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as inquiries from "../inquiries.js";
 import type * as lands from "../lands.js";
 import type * as listings from "../listings.js";
+import type * as notifications from "../notifications.js";
 import type * as purchaseRequests from "../purchaseRequests.js";
 import type * as savedListings from "../savedListings.js";
 import type * as trees from "../trees.js";
@@ -24,8 +26,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  inquiries: typeof inquiries;
   lands: typeof lands;
   listings: typeof listings;
+  notifications: typeof notifications;
   purchaseRequests: typeof purchaseRequests;
   savedListings: typeof savedListings;
   trees: typeof trees;
